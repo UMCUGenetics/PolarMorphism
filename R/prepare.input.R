@@ -37,6 +37,6 @@ ImportSNPs <- function(file = "~/3.Athero-integration/mtag/mafgt0.1.infogt0.95.n
   snps <- readr::read_table2(file, col_names = T)
   bases <- c("A", "C", "G", "T")
   snps <- snps %>%
-    dplyr::filter(dplyr::pull(snps, var = a1) %in% bases & dplyr::pull(snps, var = a2) %in% bases)
+    dplyr::filter((dplyr::pull(snps, var = a1) %in% bases) & (dplyr::pull(snps, var = a2) %in% bases))
 }
 
