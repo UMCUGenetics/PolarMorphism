@@ -7,37 +7,66 @@
 #' @param snpid Either a character indicating the common column name or,
 #' in the case of two differently named columns,
 #' a named character vector with the name of the common column in the first tibble as a name.
+#' @param N A list of sample sizes for each trait
+#' @param sample.prev In the case of binary traits: the sample prevalence. In the case of continuous traits: NA
+#' @param population.prev In the case of binary traits: the population prevalence. In the case of continuous traits: NA
+#' @param covsnps A list of logical vectors (with length equal to the number of rows of the dataframes), indicating which rows (SNPs) should be included
+#' for calculation of the covariance matrix. High confidence SNPs are recommended.
 #' @export
-ConvertToPolar <- function(df1, df2, snpid){
+ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, N = list(), sample.prev = NA, population.prev = NA, covsnps = c(), ldpath = "../../LDscores/eur_w_ld_chr/"){
   df <- dplyr::inner_join(df1, df2, by = snpid, suffix = c(".1", ".2"))
   df <- df[complete.cases(df),]
+  if(nrow(df) == 0){return()}
+  # if(whiten){
+  #   tmp <- df[df$snpid %in% covsnps,]
+  #   for(i in 1:length(N)){
+  #     #tmp <- get(paste0("df", i))
+  #     tmp %>%
+  #       rename_with(.cols = ends_with(paste0(".", as.character(i))), ~ toupper(gsub(paste0(".", i, "$"), "", .x))) %>%
+  #       mutate(Z = BETA/SE) %>%
+  #       #select(chr, bpos, snpid, a1, a2, pval, beta, se, z) %>%
+  #       mutate(N = N[[i]]) %>%
+  #       rename(SNP = snpid, P = PVAL) %>%
+  #       select(SNP, CHR, BP, A1, A2, BETA, SE, P, N, Z) %>%
+  #       readr::write_delim(x = , file = paste0("covmat.trait.", i, ".sumstats.gz"), delim = "\t")
+  #   }
+  #   rm(tmp)
+  # }
   rm(df1)
   rm(df2)
-  if(nrow(df) == 0){return()}
   df %>%
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
-  zmat.white <- whiten(X = zmat, center = F, method = "ZCA")
-  pol <- PolarCoords(x = zmat[,1], y = zmat[,2])
+  if(whiten){
+    #zmat.white <- whitening::whiten(X = zmat, center = F, method = "ZCA-cor")
+    # S <- GenomicSEM::ldsc(traits = paste0("covmat.trait.", 1:length(N), ".sumstats.gz"),
+    #                       sample.prev = sample.prev, population.prev = population.prev,
+    #                       ld = ldpath, trait.names = trait.names)#$I
+    #zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S$I, method = "ZCA-cor"))
+    mahala <- mahalanobis(x = zmat[df$snpid %in% covsnps,], center = F, cov = cov(zmat[df$snpid %in% covsnps,]))
+    S <- cov(zmat[df$snpid %in% covsnps,][sqrt(mahala) < 5,])
+    zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = "ZCA-cor"))
+    rm(S)
+    #pol <- PolarCoords(x = zmat[,1], y = zmat[,2])
+  }else{zmat.white <- zmat; zmat <- NULL}
   polw <- PolarCoords(x = zmat.white[,1], y = zmat.white[,2])
-  res <- dplyr::as_tibble(cbind(polw$r, pol$theta))
-  rm(pol)
+  res <- dplyr::as_tibble(cbind(polw$r, polw$theta)) #both come from the whitened matrix now
+  #rm(pol)
   rm(polw)
   colnames(res) <- c("r", "theta")
   res <- res %>%
     dplyr::mutate(snpid = df$snpid) %>%
-    dplyr::mutate(theta = theta%%(2*pi))  %>%
-    dplyr::mutate(fold = abs(abs(theta - pi) - (0.5*pi))) %>%
-    dplyr::mutate(traitspecificity = (fold - 0.25*pi)/0.25*pi) %>%
-    dplyr::mutate(snpid = df$snpid) %>%
+    dplyr::mutate(theta = theta)  %>%
+    dplyr::mutate(theta.trans = (theta*4)%%(2*pi)) %>%
     dplyr::mutate(pval.1 = df$pval.1) %>%
     dplyr::mutate(pval.2 = df$pval.2) %>%
     dplyr::mutate(beta.1 = df$beta.1) %>%
     dplyr::mutate(beta.2 = df$beta.2) %>%
     dplyr::mutate(se.1 = df$se.1) %>%
     dplyr::mutate(se.2 = df$se.2) %>%
-    dplyr::mutate(z.1 = df$z.1) %>%
-    dplyr::mutate(z.2 = df$z.2)
+    dplyr::mutate(z.whitened.1 = zmat.white[,1]) %>%
+    dplyr::mutate(z.whitened.2 = zmat.white[,2])
+  res$theta.trans[res$theta.trans > pi] <- res$theta.trans[res$theta.trans > pi] - (2*pi)
   return(res)
 }
 
@@ -45,7 +74,14 @@ ConvertToPolar <- function(df1, df2, snpid){
 #'
 #' Given two vectors for x- and y-coordinates, performs polar transformation. Returns the angle theta as a number between -pi and +pi.
 #' @param x @param y vector of coordinates
-PolarCoords <- function(x, y){
+
+PolarCoords <- function(x, y, z = NULL){
+  if(is.null(z)){
+    theta <- atan2(y = y, x = x)%%(2*pi)
+    return(list(r = sqrt(x^2+y^2), theta = theta))
+  }
+  phi <- atan2(y = sqrt(x^2 + y^2), x = z)%%(2*pi)
   theta <- atan2(y = y, x = x)%%(2*pi)
-  return(list(r = sqrt(x^2+y^2), theta = theta))
+  return(list(r = sqrt(x^2 + y^2 + z^2), theta = theta, phi = phi))
 }
+
