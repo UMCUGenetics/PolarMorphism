@@ -15,7 +15,8 @@
 #' @export
 ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, N = list(), sample.prev = NA, population.prev = NA, covsnps = c(), ldpath = "../../LDscores/eur_w_ld_chr/"){
   df <- dplyr::inner_join(df1, df2, by = snpid, suffix = c(".1", ".2"))
-  df <- df[complete.cases(df),]
+  #df <- df[complete.cases(df),]
+  #df <- df[!is.na(df$beta.1) & !is.na(df$beta.2),]
   if(nrow(df) == 0){return()}
   # if(whiten){
   #   tmp <- df[df$snpid %in% covsnps,]
@@ -44,7 +45,7 @@ ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, N = list(),
     #                       ld = ldpath, trait.names = trait.names)#$I
     #zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S$I, method = "ZCA-cor"))
     mahala <- mahalanobis(x = zmat[df$snpid %in% covsnps,], center = F, cov = cov(zmat[df$snpid %in% covsnps,]))
-    S <- cov(zmat[df$snpid %in% covsnps,][sqrt(mahala) < 5,])
+    S <- cov(zmat[df$snpid %in% covsnps,][mahala < 25,])
     zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = "ZCA-cor"))
     rm(S)
     #pol <- PolarCoords(x = zmat[,1], y = zmat[,2])

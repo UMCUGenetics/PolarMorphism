@@ -19,7 +19,9 @@ AlleleFlip <- function(sumstats, snps, snpid = "snpid", only.a2 = F){
       dplyr::mutate(z = beta/se)
   }else{
     same <- sumstats$a2 == sumstats$a2.b
-    if(only.a2){flip <- sumstats$a2 != sumstats$a2.b}else{flip <- sumstats$a2 == sumstats$a1.b}
+    if(only.a2){flip <- sumstats$a2 != sumstats$a2.b
+    }else{
+      flip <- sumstats$a2 == sumstats$a1.b}
     if(!only.a2){sumstats$freq <- ifelse(flip, 1 - sumstats$freq, sumstats$freq)}
     sumstats$beta <- ifelse(flip, -sumstats$beta, sumstats$beta)
     sumstats$z <- sumstats$beta/sumstats$se

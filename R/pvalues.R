@@ -19,14 +19,14 @@ GetTermFunc <- function(kappa){
   return(result)
 }
 
-pvaltheta <- function(relative.theta, kappa, tol = 1e-20, stepsize = 10){
-  relative.theta <- relative.theta %% (2*pi)
+pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
+  relative.angle <- relative.angle %% (2*pi)
   TermFuncKappa <- GetTermFunc(kappa = kappa)
-  sum <- rep(0, length(relative.theta))
+  sum <- rep(0, length(relative.angle))
   flag <- TRUE
   iters <- 1:stepsize
   while(flag){
-    terms <- mapply(FUN = TermFuncKappa, relative.theta, MoreArgs = list(iters))
+    terms <- mapply(FUN = TermFuncKappa, relative.angle, MoreArgs = list(iters))
     sum <- sum + apply(X = terms, MARGIN = 2, FUN = sum)
     if(all(abs(terms[nrow(terms),]) < tol)){
       flag <- FALSE
@@ -34,27 +34,27 @@ pvaltheta <- function(relative.theta, kappa, tol = 1e-20, stepsize = 10){
       iters <- iters + stepsize
     }
   }
-  res <- (relative.theta/(2*pi) + sum/(pi * besselI(x = kappa, nu = 0, expon.scaled = FALSE)) - 0.5) * 2
+  res <- (relative.angle/(2*pi) + sum/(pi * besselI(x = kappa, nu = 0, expon.scaled = FALSE)) - 0.5) * 2
   res[res == -1] <- 0
   return(res)
 }
 
-# pvaltheta <- function(relative.theta, kappa, tol){
-#   vm.pval1 <- (CircStats::pvm(theta = -abs(relative.theta), mu = 0, kappa = kappa, acc = tol) - 0.5)*2
-#   vm.pval2 <- PvonmisesRad.2(q = -abs(relative.theta), kappa = kappa, tol = tol)
+# pvalangle <- function(relative.angle, kappa, tol){
+#   vm.pval1 <- (CircStats::pvm(angle = -abs(relative.angle), mu = 0, kappa = kappa, acc = tol) - 0.5)*2
+#   vm.pval2 <- PvonmisesRad.2(q = -abs(relative.angle), kappa = kappa, tol = tol)
 #   return(vm.pval)
 # }
 
-#' PvalueForTheta
+#' PvalueForAngle
 #'
-#' PvalueForTheta performs p-value estimation using the von Mises distribution
-#' @param theta.trans a vector of fourfold transformed angles
+#' PvalueForAngle performs p-value estimation using the von Mises distribution
+#' @param angle.trans a vector of fourfold transformed angles
 #' @param r a vector of distances, either expected distance (z.max) or actual distance
 #' @export
-PvalueForTheta <- function(theta.trans, r, tol = 1e-20){
+PvalueForAngle <- function(angle.trans, r, tol = 1e-20){
   load("~/git/poly.gwas.integration/R/kappas.4foldtransform.Rda")
   kappas.list <- kappas.list2
-  theta.pval <- rep(NA, length(theta.trans))
+  angle.pval <- rep(NA, length(angle.trans))
   #kappas.list <- kappas.list[11:401,]
   #kappas.list[1,"x.lo"] <- 0
   kappas.list[1,"kappa"] <- 0
@@ -69,11 +69,14 @@ PvalueForTheta <- function(theta.trans, r, tol = 1e-20){
   intervals <- findInterval(x = r, vec = kappas.list$x.lo)
   ivals <- unique(intervals)
   ivals <- ivals[order(ivals)]
-  #theta.pval[intervals == 1] <- 1
+  #angle.pval[intervals == 1] <- 1
   for(ival in ivals){
     kappa <- kappas.list$kappa[ival]
     ind <- intervals == ival
-    theta.pval[ind] <- abs(pvaltheta(relative.theta = theta.trans[ind], kappa = kappa, tol = tol))
+    angle.pval[ind] <- abs(pvalangle(relative.angle = angle.trans[ind], kappa = kappa, tol = tol))
   }
-  return(theta.pval)
+  return(angle.pval)
 }
+
+
+
