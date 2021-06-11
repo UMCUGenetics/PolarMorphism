@@ -25,7 +25,7 @@ AlleleFlip <- function(sumstats, snps, snpid = "snpid", only.a2 = F){
     if(!only.a2){sumstats$freq <- ifelse(flip, 1 - sumstats$freq, sumstats$freq)}
     sumstats$beta <- ifelse(flip, -sumstats$beta, sumstats$beta)
     sumstats$z <- sumstats$beta/sumstats$se
-    sumstats$z[!same & !flip] <- NA
+    sumstats <- sumstats[same | flip,]
   }
   return(sumstats)
 }

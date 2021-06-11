@@ -39,12 +39,6 @@ pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
   return(res)
 }
 
-# pvalangle <- function(relative.angle, kappa, tol){
-#   vm.pval1 <- (CircStats::pvm(angle = -abs(relative.angle), mu = 0, kappa = kappa, acc = tol) - 0.5)*2
-#   vm.pval2 <- PvonmisesRad.2(q = -abs(relative.angle), kappa = kappa, tol = tol)
-#   return(vm.pval)
-# }
-
 #' PvalueForAngle
 #'
 #' PvalueForAngle performs p-value estimation using the von Mises distribution
@@ -55,8 +49,6 @@ PvalueForAngle <- function(angle.trans, r, tol = 1e-20){
   load("~/git/poly.gwas.integration/R/kappas.4foldtransform.Rda")
   kappas.list <- kappas.list2
   angle.pval <- rep(NA, length(angle.trans))
-  #kappas.list <- kappas.list[11:401,]
-  #kappas.list[1,"x.lo"] <- 0
   kappas.list[1,"kappa"] <- 0
   ind <- c(seq(from = 0, to = 5, by = 0.05), seq(from = 5.10, to = 10, by = 0.10), seq(from = 10.50, to = 15, by = 0.50), seq(from = 16, to = 20, by = 1))
   kappas.list <- kappas.list[kappas.list$xmu %in% ind,]
@@ -69,7 +61,6 @@ PvalueForAngle <- function(angle.trans, r, tol = 1e-20){
   intervals <- findInterval(x = r, vec = kappas.list$x.lo)
   ivals <- unique(intervals)
   ivals <- ivals[order(ivals)]
-  #angle.pval[intervals == 1] <- 1
   for(ival in ivals){
     kappa <- kappas.list$kappa[ival]
     ind <- intervals == ival
@@ -77,6 +68,5 @@ PvalueForAngle <- function(angle.trans, r, tol = 1e-20){
   }
   return(angle.pval)
 }
-
 
 
