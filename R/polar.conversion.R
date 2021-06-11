@@ -3,7 +3,6 @@
 #'
 #' Given two vectors for x- and y-coordinates, performs polar transformation. Returns the angle theta as a number between -pi and +pi.
 #' @param x @param y vector of coordinates
-
 PolarCoords <- function(x, y, z = NULL){
   if(is.null(z)){
     theta <- atan2(y = y, x = x)%%(2*pi)
@@ -29,11 +28,22 @@ PolarCoords <- function(x, y, z = NULL){
 #' @param covsnps A list of logical vectors (with length equal to the number of rows of the dataframes), indicating which rows (SNPs) should be included
 #' for calculation of the covariance matrix. High confidence SNPs are recommended.
 #' @export
-ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, N = list(), sample.prev = NA, population.prev = NA, covsnps = c(), ldpath = "../../LDscores/eur_w_ld_chr/"){
+ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct = F, ld.path = "~/LDscores/eur_w_ld_chr/", covsnps = c()){
   df <- dplyr::inner_join(df1, df2, by = snpid, suffix = c(".1", ".2"))
   if(nrow(df) == 0){return()}
   rm(df1)
   rm(df2)
+  if(ld.correct){
+    df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
+    ldscores <- read_table2(paste0(ld.path, "1.l2.ldscore.gz"), col_names = T)[,c(2,6)]
+    for(i in 2:22){
+      ldscores <- rbind(ldscores, read_table2(paste0(ld.path, i, ".l2.ldscore.gz"), col_names = T)[,c(2,6)])
+    }
+    df %>%
+      dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
+    df$z.1 <- df$z.1 - lm(data = df, formula = z.1 ~ L2)$coefficients[2] * df$L2
+    df$z.2 <- df$z.2 - lm(data = df, formula = z.2 ~ L2)$coefficients[2] * df$L2
+  }
   df %>%
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
