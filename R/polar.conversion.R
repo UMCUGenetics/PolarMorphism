@@ -1,4 +1,4 @@
-#
+
 #' PolarCoords
 #'
 #' Given two vectors for x- and y-coordinates, performs polar transformation. Returns the angle theta as a number between -pi and +pi.
@@ -18,7 +18,7 @@ PolarCoords <- function(x, y, z = NULL){
 #' ConvertToPolar joins two tibbles with summary statistics by a common SNP id column,
 #' with alleles already harmonized, for instance with AlleleFlip.
 #' It then converts the original z-scores for trait 1 and 2 to polar coordinates, describing the angle theta with the x-axis (trait 1), and the distance r.
-#' @param df1 @param df2 tibble, with at least columns snpid, a1, a2, beta, se, freq, pval
+#' @param df1,df2 tibble, with at least columns snpid, a1, a2, beta, se, freq, pval
 #' @param snpid Either a character indicating the common column name or,
 #' in the case of two differently named columns,
 #' a named character vector with the name of the common column in the first tibble as a name.
@@ -35,9 +35,9 @@ ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct 
   rm(df2)
   if(ld.correct){
     df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
-    ldscores <- read_table2(paste0(ld.path, "1.l2.ldscore.gz"), col_names = T)[,c(2,6)]
+    ldscores <- readr::read_table2(paste0(ld.path, "1.l2.ldscore.gz"), col_names = T)[,c(2,6)]
     for(i in 2:22){
-      ldscores <- rbind(ldscores, read_table2(paste0(ld.path, i, ".l2.ldscore.gz"), col_names = T)[,c(2,6)])
+      ldscores <- rbind(ldscores, readr::read_table2(paste0(ld.path, i, ".l2.ldscore.gz"), col_names = T)[,c(2,6)])
     }
     df %>%
       dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
