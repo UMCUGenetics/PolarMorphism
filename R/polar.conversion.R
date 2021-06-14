@@ -41,8 +41,8 @@ ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct 
     }
     df %>%
       dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
-    df$z.1 <- df$z.1 - lm(data = df, formula = z.1 ~ L2)$coefficients[2] * df$L2
-    df$z.2 <- df$z.2 - lm(data = df, formula = z.2 ~ L2)$coefficients[2] * df$L2
+    df$z.1 <- (abs(df$z.1) - (lm(data = df, formula = z.1 ~ L2)$coefficients[2] * df$L2)) * sign(df$z.1)
+    df$z.2 <- (abs(df$z.2) - (lm(data = df, formula = z.2 ~ L2)$coefficients[2] * df$L2)) * sign(df$z.2)
   }
   df %>%
     dplyr::select(starts_with("z")) %>%
