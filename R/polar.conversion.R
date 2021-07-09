@@ -8,9 +8,11 @@ PolarCoords <- function(x, y, z = NULL){
     theta <- atan2(y = y, x = x)%%(2*pi)
     return(list(r = sqrt(x^2+y^2), theta = theta))
   }
-  phi <- atan2(y = sqrt(x^2 + y^2), x = z)%%(2*pi)
+  #phi <- atan2(y = sqrt(x^2 + y^2), x = z)%%(2*pi)
+  r <- sqrt(x^2 + y^2 + z^2)
+  phi <- acos(z/r)
   theta <- atan2(y = y, x = x)%%(2*pi)
-  return(list(r = sqrt(x^2 + y^2 + z^2), theta = theta, phi = phi))
+  return(list(r = r, theta = theta, phi = phi))
 }
 
 #' ConvertToPolar
