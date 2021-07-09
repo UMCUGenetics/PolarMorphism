@@ -45,8 +45,8 @@ pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
 #' @param angle.trans a vector of fourfold transformed angles
 #' @param r a vector of distances, either expected distance (z.max) or actual distance
 #' @export
-PvalueForAngle <- function(angle.trans, r, tol = 1e-20){
-  load("~/git/poly.gwas.integration/R/kappas.4foldtransform.Rda")
+PvalueForAngle <- function(angle.trans, r, tol = 1e-20, kappa.file = "~/git/PolarMorphism/R/kappas.4foldtransform.Rda"){
+  load(kappa.file)
   kappas.list <- kappas.list2
   angle.pval <- rep(NA, length(angle.trans))
   kappas.list[1,"kappa"] <- 0
