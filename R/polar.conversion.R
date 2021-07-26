@@ -43,13 +43,10 @@ PolarCoords <- function(x, y, z = NULL){
 #' @param snpid Either a character indicating the common column name or,
 #' in the case of two differently named columns,
 #' a named character vector with the name of the common column in the first tibble as a name.
-#' @param N A list of sample sizes for each trait
-#' @param sample.prev In the case of binary traits: the sample prevalence. In the case of continuous traits: NA
-#' @param population.prev In the case of binary traits: the population prevalence. In the case of continuous traits: NA
-#' @param covsnps A list of logical vectors (with length equal to the number of rows of the dataframes), indicating which rows (SNPs) should be included
+#' @param covsnps A list of snpid's, indicating which rows (SNPs) should be included
 #' for calculation of the covariance matrix. High confidence SNPs are recommended.
 #' @export
-ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct = F, ld.path = "~/LDscores/eur_w_ld_chr/", covsnps = c()){
+ConvertToPolar <- function(df1, df2, snpid, whiten = F, covsnps = c(), mahalanobis.threshold = 5){
   df <- dplyr::inner_join(df1, df2, by = snpid, suffix = c(".1", ".2"))
   if(nrow(df) == 0){return()}
   rm(df1)
@@ -58,8 +55,11 @@ ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct 
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
   if(whiten){
+    if(length(covsnps) == 0){
+      covsnps <- df$snpid
+    }
     mahala <- mahalanobis(x = zmat[df$snpid %in% covsnps,], center = F, cov = cov(zmat[df$snpid %in% covsnps,]))
-    S <- cov(zmat[df$snpid %in% covsnps,][mahala < 25,])
+    S <- cov(zmat[df$snpid %in% covsnps,][mahala < mahalanobis.threshold^2,])
     zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = "ZCA-cor"))
     rm(S)
   }else{zmat.white <- zmat; zmat <- NULL}
