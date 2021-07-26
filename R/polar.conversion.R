@@ -5,6 +5,7 @@
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
+#' @export
 PolarCoords <- function(inputdf){
   inputdf <- abs(inputdf)
   rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
@@ -22,18 +23,13 @@ PolarCoords <- function(inputdf){
   return(list(r = r, angle = angle))
 }
 
-#' PolarCoords
-#'
-#' Given two vectors for x- and y-coordinates, performs polar transformation. Returns the angle theta as a number between -pi and +pi.
-#' @param x,y vector of coordinates
-#' @export
-PolarCoords <- function(x = NULL, y = NULL, z = NULL, inputvec = NULL){
-  if(is.null(inputved)){
-    theta <- atan2(y = y, x = x)%%(2*pi)
-    return(list(r = sqrt(x^2+y^2), theta = theta))
-  }
-
-}
+# PolarCoords <- function(x = NULL, y = NULL, z = NULL, inputvec = NULL){
+#   if(is.null(inputved)){
+#     theta <- atan2(y = y, x = x)%%(2*pi)
+#     return(list(r = sqrt(x^2+y^2), theta = theta))
+#   }
+#
+# }
 
 #' ConvertToPolar
 #'
@@ -69,14 +65,14 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
     zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = "ZCA-cor"))
     rm(S)
   }else{zmat.white <- zmat; zmat <- NULL}
-  polw <- PolarCoords(x = zmat.white[,1], y = zmat.white[,2])
-  res <- dplyr::as_tibble(cbind(polw$r, polw$theta)) #both come from the whitened matrix now
+  polw <- PolarCoords(inputdf = zmat.white)
+  res <- dplyr::as_tibble(cbind(polw$r, polw$angle)) #both come from the whitened matrix now
   rm(polw)
-  colnames(res) <- c("r", "theta")
+  colnames(res) <- c("r", "angle")
   res <- res %>%
     dplyr::mutate(snpid = df$snpid) %>%
-    dplyr::mutate(theta = theta)  %>%
-    dplyr::mutate(theta.trans = (theta*4)%%(2*pi)) %>%
+    dplyr::mutate(angle = angle)  %>%
+    dplyr::mutate(angle.trans = (angle*4)%%(2*pi)) %>%
     dplyr::mutate(pval.1 = df$pval.1) %>%
     dplyr::mutate(pval.2 = df$pval.2) %>%
     dplyr::mutate(beta.1 = df$beta.1) %>%
@@ -85,6 +81,6 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
     dplyr::mutate(se.2 = df$se.2) %>%
     dplyr::mutate(z.whitened.1 = zmat.white[,1]) %>%
     dplyr::mutate(z.whitened.2 = zmat.white[,2])
-  res$theta.trans[res$theta.trans > pi] <- res$theta.trans[res$theta.trans > pi] - (2*pi)
+  res$angle.trans[res$angle.trans > pi] <- res$angle.trans[res$angle.trans > pi] - (2*pi)
   return(res)
 }
