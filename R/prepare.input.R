@@ -30,15 +30,12 @@ AlleleFlip <- function(sumstats, snps, snpid = "snpid", only.a2 = F){
   return(sumstats)
 }
 
-#' AlleleFlip
+#' LDCorrect
 #'
-#' Alleleflip joins a tibble with summary statistics and a tibble with SNP meta information,
-#' by a common SNP id column, and aligns reference and alternative alleles to the meta tibble.
-#' @param sumstats A tibble, with at least columns snpid, a1, a2, beta, se, freq, pval.
-#' @param snps A tibble, with at least columns snpid, a1, a2.
-#' @param snpid Either a character indicating the common column name or,
-#' in the case of two differently named columns,
-#' a named character vector with the name of the common column in the first tibble as a name.
+#' LDCorrect performs LD correction given a data-frame or tibble containing at least snpid's and z-scores (column names starting with "z"),
+#' and a path to a LD scores file (as formatted by the LDSC software)
+#' @param df A tibble, with at least columns snpid and z-scores
+#' @param ld.path the path to the LD scores files
 #' @export
 LDCorrect <- function(df, ld.path){
   df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
@@ -48,9 +45,13 @@ LDCorrect <- function(df, ld.path){
   }
   df %>%
     dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
-
-  df$z.1 <- (abs(df$z.1) - (lm(data = df, formula = abs(z.1) ~ L2)$coefficients[2] * df$L2)) * sign(df$z.1)
-  df$z.2 <- (abs(df$z.2) - (lm(data = df, formula = abs(z.2) ~ L2)$coefficients[2] * df$L2)) * sign(df$z.2)
+  for(zcolnum in grep(pattern = "^z", colnames(df))){
+    print(zcolnum)
+    zvec <- df[,zcolnum]
+    df[,zcolnum] <- (abs(df[,zcolnum]) - (lm(formula = abs(df[,zcolnum]) ~ df$L2)$coefficients[2] * df$L2)) * sign(df[,zcolnum])
+  }
+  df <- dplyr::select(.data = df, -"L2")
+  return(df)
 }
 
 #' Import SNPs
