@@ -1,8 +1,27 @@
+#' CalcLambda
+#'
+#' Calculates the great circle distance between a SNP's position and the expected position under the null hypothesis of trait-specific effect.
+#' The great circle distance is the angle between the vector from the origin of the p-dimensional sphere the the SNP, and the vector from the origin to the expected position.
+#' Works per SNP (row-wise).
+#' @param inputvec vector of effect sizes (z-scores) of 1 SNP on p traits
+#' @returns The angle in radians, not normalized to describe a full circle
+CalcLambda <- function(inputvec){
+  inputvec <- abs(inputvec)
+  mindim <- which.max(inputvec)
+  rsquared <- sum(inputvec^2)
+  r <- sqrt(rsquared)
+  zerovec <- rep(0, length(inputvec))
+  zerovec[mindim] <- r
+  distsquared <- sum((inputvec - zerovec)^2)
+  res <- acos((1 - (distsquared/(2*rsquared))))
+  return(res)
+}
 
 #' PolarCoords
 #'
 #' Given two vectors for x- and y-coordinates, performs polar transformation. Returns the angle theta as a number between -pi and +pi.
-#' @param x @param y vector of coordinates
+#' @param x,y vector of coordinates
+#' @export
 PolarCoords <- function(x, y, z = NULL){
   if(is.null(z)){
     theta <- atan2(y = y, x = x)%%(2*pi)
@@ -35,17 +54,6 @@ ConvertToPolar <- function(df1, df2, snpid, trait.names, whiten = F, ld.correct 
   if(nrow(df) == 0){return()}
   rm(df1)
   rm(df2)
-  if(ld.correct){
-    df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
-    ldscores <- readr::read_table2(paste0(ld.path, "1.l2.ldscore.gz"), col_names = T)[,c(2,6)]
-    for(i in 2:22){
-      ldscores <- rbind(ldscores, readr::read_table2(paste0(ld.path, i, ".l2.ldscore.gz"), col_names = T)[,c(2,6)])
-    }
-    df %>%
-      dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
-    df$z.1 <- (abs(df$z.1) - (lm(data = df, formula = z.1 ~ L2)$coefficients[2] * df$L2)) * sign(df$z.1)
-    df$z.2 <- (abs(df$z.2) - (lm(data = df, formula = z.2 ~ L2)$coefficients[2] * df$L2)) * sign(df$z.2)
-  }
   df %>%
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
