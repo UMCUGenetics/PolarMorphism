@@ -1,11 +1,11 @@
-#' CalcLambda
+#' PolarCoords
 #'
-#' Calculates the great circle distance between a SNP's position and the expected position under the null hypothesis of trait-specific effect.
-#' The great circle distance is the angle between the vector from the origin of the p-dimensional sphere the the SNP, and the vector from the origin to the expected position.
+#' Calculates the central angle between a SNP's position and the expected position under the null hypothesis of trait-specific effect.
+#' The central angle is the angle between the vector from the origin of the p-dimensional sphere to the SNP, and the vector from the origin to the expected position.
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
-CalcLambda <- function(inputdf){
+PolarCoords <- function(inputdf){
   inputdf <- abs(inputdf)
   rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
   r <- sqrt(rsquared)
