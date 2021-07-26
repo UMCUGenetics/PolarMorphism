@@ -5,7 +5,6 @@
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
-#' @export
 PolarCoords <- function(inputdf){
   inputdf <- abs(inputdf)
   rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
@@ -13,7 +12,10 @@ PolarCoords <- function(inputdf){
   zerovec <- as.data.frame(matrix(0, nrow = nrow(inputdf), ncol = ncol(inputdf)))
   zerovec$maxdim <- apply(X = inputdf, MARGIN = 1, FUN = which.max)
   zerovec$r <- r
-  zerovec <- as.data.frame(apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)}))
+  colnms <- colnames(zerovec)
+  zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)})
+  zerovec <- as.data.frame(t(zerovec2))
+  colnames(zerovec) <- colnms
   zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
   distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
   angle <- acos((1 - (distsquared/(2*rsquared))))
