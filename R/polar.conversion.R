@@ -4,7 +4,7 @@
 #' The great circle distance is the angle between the vector from the origin of the p-dimensional sphere the the SNP, and the vector from the origin to the expected position.
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
-#' @returns a list with the distance r, and the angle in radians, not normalized to describe a full circle
+#' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
 CalcLambda <- function(inputdf){
   inputdf <- abs(inputdf)
   rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
@@ -16,6 +16,9 @@ CalcLambda <- function(inputdf){
   zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
   distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
   angle <- acos((1 - (distsquared/(2*rsquared))))
+  p <- ncol(inputdf)
+  correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
+  angle <- angle * correction.factor
   return(list(r = r, angle = angle))
 }
 
