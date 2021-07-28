@@ -6,32 +6,35 @@
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
 PolarCoords <- function(inputdf){
-  inputdf <- abs(inputdf)
-  rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
-  r <- sqrt(rsquared)
-  zerovec <- as.data.frame(matrix(0, nrow = nrow(inputdf), ncol = ncol(inputdf)))
-  zerovec$maxdim <- apply(X = inputdf, MARGIN = 1, FUN = which.max)
-  zerovec$r <- r
-  colnms <- colnames(zerovec)
-  zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)})
-  zerovec <- as.data.frame(t(zerovec2))
-  colnames(zerovec) <- colnms
-  zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
-  distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
-  angle <- acos((1 - (distsquared/(2*rsquared))))
   p <- ncol(inputdf)
-  correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
-  angle <- angle * correction.factor
+  if(p < 2){
+    print(paste("You supplied data for", p, "traits. Please supply data for 2 or more traits." ))
+    return()
+  }
+  if(p == 2){
+    x <- inputdf[,1]
+    y <- inputdf[,2]
+    r <- sqrt(x^2+y^2)
+    angle <- atan2(y = y, x = x)%%(2*pi)
+  }else{
+    inputdf <- abs(inputdf)
+    rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
+    r <- sqrt(rsquared)
+    zerovec <- as.data.frame(matrix(0, nrow = nrow(inputdf), ncol = ncol(inputdf)))
+    zerovec$maxdim <- apply(X = inputdf, MARGIN = 1, FUN = which.max)
+    zerovec$r <- r
+    colnms <- colnames(zerovec)
+    zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)})
+    zerovec <- as.data.frame(t(zerovec2))
+    colnames(zerovec) <- colnms
+    zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
+    distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
+    angle <- acos((1 - (distsquared/(2*rsquared))))
+    correction.factor <- (pi)/(acos(1 - ((p - sqrt(p))/(p))))
+    angle <- angle * correction.factor
+  }
   return(list(r = r, angle = angle))
 }
-
-# PolarCoords <- function(x = NULL, y = NULL, z = NULL, inputvec = NULL){
-#   if(is.null(inputved)){
-#     theta <- atan2(y = y, x = x)%%(2*pi)
-#     return(list(r = sqrt(x^2+y^2), theta = theta))
-#   }
-#
-# }
 
 #' ConvertToPolar
 #'
@@ -49,12 +52,13 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
   df <- get(dfnames[1], envir = .GlobalEnv)
   for(i in 2:length(dfnames)){
     df.next <- get(dfnames[i], envir = .GlobalEnv)
-    df <- dplyr::inner_join(df, df.next, by = snpid, suffix = c("", paste0(".", i)))
+    df <- dplyr::inner_join(df, df.next, by = snpid, suffix = c(paste0(".", (i-1)), paste0(".", i)))
   }
-  df <- dplyr::rename(.data = df, "z.1" = "z")
-
+  rm(df.next)
+  #df <- dplyr::rename(.data = df, "z.1" = "z")
+  df <- df[complete.cases(df[,grep("^z", colnames(df))]),]
   if(nrow(df) == 0){return()}
-  rm(list = dfnames)
+
   df %>%
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
@@ -68,21 +72,24 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
     rm(S)
   }else{zmat.white <- zmat; zmat <- NULL}
   polw <- PolarCoords(inputdf = zmat.white)
-  res <- dplyr::as_tibble(cbind(polw$r, polw$angle)) #both come from the whitened matrix now
+  res <- dplyr::as_tibble(cbind(df[,snpid], polw$r, polw$angle, zmat.white)) #both come from the whitened matrix now
   rm(polw)
-  colnames(res) <- c("r", "angle")
-  res <- res %>%
-    dplyr::mutate(snpid = df$snpid) %>%
-    dplyr::mutate(angle = angle)  %>%
-    dplyr::mutate(angle.trans = (angle*4)%%(2*pi)) %>%
-    dplyr::mutate(pval.1 = df$pval.1) %>%
-    dplyr::mutate(pval.2 = df$pval.2) %>%
-    dplyr::mutate(beta.1 = df$beta.1) %>%
-    dplyr::mutate(beta.2 = df$beta.2) %>%
-    dplyr::mutate(se.1 = df$se.1) %>%
-    dplyr::mutate(se.2 = df$se.2) %>%
-    dplyr::mutate(z.whitened.1 = zmat.white[,1]) %>%
-    dplyr::mutate(z.whitened.2 = zmat.white[,2])
-  res$angle.trans[res$angle.trans > pi] <- res$angle.trans[res$angle.trans > pi] - (2*pi)
+  colnames(res) <- c(snpid, "r", "angle", paste0("z.whitened.", 1:length(dfnames)))
+  df %>%
+    select(starts_with(c(snpid, "chr", "bp", "pos", "beta", "se", "pval", "a1", "a2"))) %>%
+    dplyr::inner_join(res, by = snpid) -> res
+  # res <- res %>%
+  #   dplyr::mutate(snpid = df$snpid) %>%
+  #   dplyr::mutate(angle = angle)  %>%
+  #   #dplyr::mutate(angle.trans = (angle*4)%%(2*pi)) %>%
+  #   dplyr::mutate(pval.1 = df$pval.1) %>%
+  #   dplyr::mutate(pval.2 = df$pval.2) %>%
+  #   dplyr::mutate(beta.1 = df$beta.1) %>%
+  #   dplyr::mutate(beta.2 = df$beta.2) %>%
+  #   dplyr::mutate(se.1 = df$se.1) %>%
+  #   dplyr::mutate(se.2 = df$se.2) %>%
+  #   dplyr::mutate(z.whitened.1 = zmat.white[,1]) %>%
+  #   dplyr::mutate(z.whitened.2 = zmat.white[,2])
+  #res$angle.trans[res$angle.trans > pi] <- res$angle.trans[res$angle.trans > pi] - (2*pi)
   return(res)
 }
