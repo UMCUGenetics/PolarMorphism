@@ -38,18 +38,24 @@ AlleleFlip <- function(sumstats, snps, snpid = "snpid", only.a2 = F){
 #' @param ld.path the path to the LD scores files
 #' @export
 LDCorrect <- function(df, ld.path){
-  df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
+  #df <- df[df$snpid %in% unlist(readr::read_table2(paste0(ld.path, "w_hm3.snplist"), col_types = readr::cols_only("SNP" = "c"))),]
   ldscores <- readr::read_table2(paste0(ld.path, "1.l2.ldscore.gz"), col_names = T)[,c(2,6)]
   for(i in 2:22){
     ldscores <- rbind(ldscores, readr::read_table2(paste0(ld.path, i, ".l2.ldscore.gz"), col_names = T)[,c(2,6)])
   }
   df %>%
     dplyr::inner_join(ldscores, by = c("snpid" = "SNP")) -> df
+  rm(ldscores)
   for(zcolnum in grep(pattern = "^z", colnames(df))){
     print(zcolnum)
-    zvec <- df[,zcolnum]
-    df[,zcolnum] <- (abs(df[,zcolnum]) - (lm(formula = abs(df[,zcolnum]) ~ df$L2)$coefficients[2] * df$L2)) * sign(df[,zcolnum])
+    zvec <- unlist(df[,zcolnum])
+    sign.zvec <- sign(zvec)
+    fit <- lm(formula = abs(zvec) ~ df$L2)
+    zvec <- (fit$residuals + fit$coefficients[1])
+    #zvec[zvec < 0] <- 0
+    df[,zcolnum] <- zvec * sign.zvec
   }
+  rm(zvec)
   df <- dplyr::select(.data = df, -"L2")
   return(df)
 }
