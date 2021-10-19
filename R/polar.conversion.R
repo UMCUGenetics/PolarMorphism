@@ -5,33 +5,39 @@
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
-PolarCoords <- function(inputdf){
+PolarCoords <- function(inputdf, debug = T){
   p <- ncol(inputdf)
   if(p < 2){
-    print(paste("You supplied data for", p, "traits. Please supply data for 2 or more traits." ))
+    print(paste("You supplied data for", p, "trait(s). Please supply data for 2 or more traits."))
     return()
   }
-  if(p == 2){
-    x <- inputdf[,1]
-    y <- inputdf[,2]
-    r <- sqrt(x^2+y^2)
-    angle <- atan2(y = y, x = x)%%(2*pi)
+  #orig.inputdf <- inputdf
+  inputdf <- abs(inputdf)
+  rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
+  r <- sqrt(rsquared)
+  if(p == 2 & !debug){
+    angle <- atan2(y = inputdf[,2], x = inputdf[,1])%%(2*pi)
+    angle <- (angle * 4)%%(2*pi)
+    angle[angle > pi] <- angle[angle > pi] - (2*pi)
+    #angle <- abs(angle)
   }else{
-    inputdf <- abs(inputdf)
-    rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
-    r <- sqrt(rsquared)
     zerovec <- as.data.frame(matrix(0, nrow = nrow(inputdf), ncol = ncol(inputdf)))
-    zerovec$maxdim <- apply(X = inputdf, MARGIN = 1, FUN = which.max)
+    zerovec$maxdim <- apply(X = abs(inputdf), MARGIN = 1, FUN = which.max)
+    #zerovec$signofmax <- apply(inputdf, MARGIN = 1, FUN = function(row){return(sign(row[which.max(row)]))})
     zerovec$r <- r
     colnms <- colnames(zerovec)
+    #zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["signofmax"]*row["r"]; return(row)})
     zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)})
     zerovec <- as.data.frame(t(zerovec2))
     colnames(zerovec) <- colnms
+    #zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r", -"signofmax"))
     zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
     distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
-    angle <- acos((1 - (distsquared/(2*rsquared))))
-    correction.factor <- (pi)/(acos(1 - ((p - sqrt(p))/(p))))
-    angle <- angle * correction.factor
+    angle <- (acos(1 - (distsquared/(2*rsquared))))%%(2*pi)
+    #correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
+    correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
+    angle <- ((angle * correction.factor)%%(2*pi))/2
+    #angle[angle > pi] <- angle[angle > pi] - (2*pi)
   }
   return(list(r = r, angle = angle))
 }
@@ -48,17 +54,18 @@ PolarCoords <- function(inputdf){
 #' @param covsnps A list of snpid's, indicating which rows (SNPs) should be included
 #' for calculation of the covariance matrix. High confidence SNPs are recommended.
 #' @export
-ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobis.threshold = 5){
+ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobis.threshold = 5, whitening.method = "ZCA-cor", LDcorrect = F, ld.path = "~/LDscores/eur_w_ld_chr/"){
   df <- get(dfnames[1], envir = .GlobalEnv)
   for(i in 2:length(dfnames)){
     df.next <- get(dfnames[i], envir = .GlobalEnv)
     df <- dplyr::inner_join(df, df.next, by = snpid, suffix = c(paste0(".", (i-1)), paste0(".", i)))
   }
-  rm(df.next)
+  #rm(df.next)
+
   #df <- dplyr::rename(.data = df, "z.1" = "z")
   df <- df[complete.cases(df[,grep("^z", colnames(df))]),]
   if(nrow(df) == 0){return()}
-
+  if(LDcorrect){df <- LDCorrect(df, ld.path = ld.path)}
   df %>%
     dplyr::select(starts_with("z")) %>%
     as.matrix() -> zmat
@@ -67,8 +74,9 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
       covsnps <- df$snpid
     }
     mahala <- mahalanobis(x = zmat[df$snpid %in% covsnps,], center = F, cov = cov(zmat[df$snpid %in% covsnps,]))
+    print(paste("number of SNPs used for cov:", sum(mahala < mahalanobis.threshold^2)))
     S <- cov(zmat[df$snpid %in% covsnps,][mahala < mahalanobis.threshold^2,])
-    zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = "ZCA-cor"))
+    zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = whitening.method))
     rm(S)
   }else{zmat.white <- zmat; zmat <- NULL}
   polw <- PolarCoords(inputdf = zmat.white)
