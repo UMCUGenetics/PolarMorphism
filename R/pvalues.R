@@ -20,7 +20,8 @@ GetTermFunc <- function(kappa){
   return(result)
 }
 
-pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
+pvalangle_p2 <- function(relative.angle, p = 2, kappa, tol = 1e-20, stepsize = 10){
+  relative.angle[relative.angle == 0] <- NA
   # We need this function for the infinite sum that approaches the integral of the probability density function.
   TermFuncKappa <- GetTermFunc(kappa = kappa)
   # We initialize a vector of the same length as relative.angle, to store the sum results in
@@ -45,7 +46,35 @@ pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
   }
   # Once we have the sums, we do the calculation below to get the approximate value of the integral of the probability function for each SNP (i.e. the p-values)
   res <- ((relative.angle/(2*pi)) + sum/(pi * besselI(x = kappa, nu = 0, expon.scaled = FALSE)) + 0.5) * 2
-  res[res == -1] <- 0
+  res[is.na(relative.angle)] <- 0
+  return(res)
+}
+
+pvalangle_pmore <- function(relative.angle, kappa, p, tol = 1e-50, stepsize = 10, maxiter = 2000, tolhg = 0){
+  relative.angle <- relative.angle
+  constant <- CpvMF(p = p, k = kappa)
+  res <- rep(0, length(relative.angle))
+  flag <- TRUE
+  ind <- !is.na(relative.angle)
+  cotx <- (1/tan(relative.angle))
+  abssinx <- abs(sin(relative.angle))
+  cosxsq <- (cos(relative.angle))^2
+  kcosx <- kappa*cos(relative.angle)
+  kcosx_term <- rep(1, length(relative.angle))
+  j <- 0
+  # terms <- c(0)
+  while(flag){
+    term <- (1/gamma(j+2)) * kcosx_term * Re(hypergeo(A = 0.5, B = ((j+1)/2), C = ((j+3)/2), z = cosxsq[ind], maxiter = maxiter, tol = tolhg))
+    #terms <- c(terms, -term)
+    res[ind] <- res[ind] + term
+    kcosx_term <- kcosx_term*kcosx
+    j <- j + 1
+    ind <- abs(term) >= tol & !is.na(term)
+    if(sum(ind, na.rm = T) == 0){flag <- FALSE}
+  }
+  res <- -res * cotx * abssinx
+  res <- (constant * res)/pi
+  res[is.na(relative.angle)] <- 1
   return(res)
 }
 
@@ -55,7 +84,8 @@ pvalangle <- function(relative.angle, kappa, tol = 1e-20, stepsize = 10){
 #' @param angle.trans a vector of fourfold transformed angles
 #' @param r a vector of distances
 #' @export
-PvalueForAngle <- function(angle.trans, r, tol = 1e-20, kappa.file = "~/git/PolarMorphism/R/kappas.4foldtransform.Rda"){
+PvalueForAngle <- function(angle.trans, r, p = 2, tol = 1e-20, kappa.file = "~/git/PolarMorphism/R/kappas.4foldtransform.Rda", debug = F){
+  if(p == 2 & !debug){pvalfun <- pvalangle_p2}else{pvalfun <- pvalangle_pmore}
   angle.trans <- -abs(angle.trans)
   load(kappa.file)
   kappas.list <- kappas.list2
@@ -75,7 +105,8 @@ PvalueForAngle <- function(angle.trans, r, tol = 1e-20, kappa.file = "~/git/Pola
   for(ival in ivals){
     kappa <- kappas.list$kappa[ival]
     ind <- intervals == ival
-    angle.pval[ind] <- abs(pvalangle(relative.angle = angle.trans[ind], kappa = kappa, tol = tol))
+    angle.pval[ind] <- suppressWarnings(pvalfun(relative.angle = angle.trans[ind], kappa = kappa, p = p, tol = tol))
+    if(p > 2 | debug){angle.pval[ind] <- suppressWarnings(angle.pval[ind] - pvalfun(relative.angle = -pi, kappa = kappa, p = p, tol = tol))}
   }
   return(angle.pval)
 }

@@ -5,13 +5,12 @@
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
-PolarCoords <- function(inputdf, debug = T){
+PolarCoords <- function(inputdf, debug = F){
   p <- ncol(inputdf)
   if(p < 2){
     print(paste("You supplied data for", p, "trait(s). Please supply data for 2 or more traits."))
     return()
   }
-  #orig.inputdf <- inputdf
   inputdf <- abs(inputdf)
   rsquared <- apply(X = inputdf, MARGIN = 1, FUN = function(row){return(sum(row^2))})
   r <- sqrt(rsquared)
@@ -19,25 +18,19 @@ PolarCoords <- function(inputdf, debug = T){
     angle <- atan2(y = inputdf[,2], x = inputdf[,1])%%(2*pi)
     angle <- (angle * 4)%%(2*pi)
     angle[angle > pi] <- angle[angle > pi] - (2*pi)
-    #angle <- abs(angle)
   }else{
     zerovec <- as.data.frame(matrix(0, nrow = nrow(inputdf), ncol = ncol(inputdf)))
     zerovec$maxdim <- apply(X = abs(inputdf), MARGIN = 1, FUN = which.max)
-    #zerovec$signofmax <- apply(inputdf, MARGIN = 1, FUN = function(row){return(sign(row[which.max(row)]))})
     zerovec$r <- r
     colnms <- colnames(zerovec)
-    #zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["signofmax"]*row["r"]; return(row)})
     zerovec2 <- apply(zerovec, 1, function(row){row[row["maxdim"]] <- row["r"]; return(row)})
     zerovec <- as.data.frame(t(zerovec2))
     colnames(zerovec) <- colnms
-    #zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r", -"signofmax"))
     zerovec <- dplyr::select(.data = zerovec, c(-"maxdim", -"r"))
-    distsquared <- apply(X = (inputdf - zerovec)^2, MARGIN = 1, FUN = sum)
-    angle <- (acos(1 - (distsquared/(2*rsquared))))%%(2*pi)
-    #correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
-    correction.factor <- (2*pi)/(acos(1 - ((p - sqrt(p))/(p))))
+    angle <- apply(inputdf*zerovec, MARGIN = 1, sum)
+    angle <- acos(angle/rsquared)
+    correction.factor <- (2*pi)/acos(sqrt(p)/p)
     angle <- ((angle * correction.factor)%%(2*pi))/2
-    #angle[angle > pi] <- angle[angle > pi] - (2*pi)
   }
   return(list(r = r, angle = angle))
 }
@@ -79,7 +72,7 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
     zmat.white <- tcrossprod(zmat, whitening::whiteningMatrix(Sigma = S, method = whitening.method))
     rm(S)
   }else{zmat.white <- zmat; zmat <- NULL}
-  polw <- PolarCoords(inputdf = zmat.white)
+  polw <- PolarCoords(inputdf = zmat.white, debug = F)
   res <- dplyr::as_tibble(cbind(df[,snpid], polw$r, polw$angle, zmat.white)) #both come from the whitened matrix now
   rm(polw)
   colnames(res) <- c(snpid, "r", "angle", paste0("z.whitened.", 1:length(dfnames)))

@@ -9,7 +9,7 @@
 #############################################################
 
 
-pvm.mu0 <- function(q, kappa, tol) {
+pvm.mu0.2 <- function(q, kappa, tol) {
   flag <- TRUE
   p <- 1
   sum <- 0
@@ -27,20 +27,25 @@ pvm.mu0 <- function(q, kappa, tol) {
 #'
 #' PvonmisesRad does things but then faster. (write later)
 #' @export
-PvonmisesRad <- function(q, mu, kappa, tol) {
+PvonmisesRad.2 <- function(q, kappa, tol) {
   q <- q %% (2 * pi)
   n <- length(q)
-  mu <- mu %% (2 * pi)
+  # mu <- mu %% (2 * pi)
+  mu <- 0
+  result <- rep(NA, n)
   if (mu == 0) {
-    result <- pvm.mu0(q, kappa, tol)
+    result <- pvm.mu0.2(q, kappa, tol)
   } else {
-    result <- rep(NA, n)
-    lt.mu.lo <- pvm.mu0((-mu)%%(2*pi), kappa, tol)
-    eq.mu.lo <- 1 - lt.mu.lo
-    gt.mu.lo <- 1 - lt.mu.lo
-    result[q < mu] <- pvm.mu0((q[q < mu] - mu) %% (2 * pi), kappa, tol) - lt.mu.lo
-    result[q == mu] <- eq.mu.lo
-    result[q > mu] <- pvm.mu0(q[q > mu] - mu, kappa, tol) + gt.mu.lo
+    # result <- rep(NA, n)
+    # lt.mu.lo <- pvm.mu0((-mu)%%(2*pi), kappa, tol)
+    # eq.mu.lo <- 1 - lt.mu.lo
+    # gt.mu.lo <- 1 - lt.mu.lo
+    # result[q < mu] <- pvm.mu0((q[q < mu] - mu) %% (2 * pi), kappa, tol) - lt.mu.lo
+    # result[q == mu] <- eq.mu.lo
+    # result[q > mu] <- pvm.mu0(q[q > mu] - mu, kappa, tol) + gt.mu.lo
   }
   return(result)
 }
+
+
+
