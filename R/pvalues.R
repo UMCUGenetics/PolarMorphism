@@ -62,10 +62,8 @@ pvalangle_pmore <- function(relative.angle, kappa, p, tol = 1e-50, stepsize = 10
   kcosx <- kappa*cos(relative.angle)
   kcosx_term <- rep(1, length(relative.angle))
   j <- 0
-  # terms <- c(0)
   while(flag){
     term <- (1/gamma(j+2)) * kcosx_term * Re(hypergeo(A = 0.5, B = ((j+1)/2), C = ((j+3)/2), z = cosxsq[ind], maxiter = maxiter, tol = tolhg))
-    #terms <- c(terms, -term)
     res[ind] <- res[ind] + term
     kcosx_term <- kcosx_term*kcosx
     j <- j + 1

@@ -53,9 +53,6 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
     df.next <- get(dfnames[i], envir = .GlobalEnv)
     df <- dplyr::inner_join(df, df.next, by = snpid, suffix = c(paste0(".", (i-1)), paste0(".", i)))
   }
-  #rm(df.next)
-
-  #df <- dplyr::rename(.data = df, "z.1" = "z")
   df <- df[complete.cases(df[,grep("^z", colnames(df))]),]
   if(nrow(df) == 0){return()}
   if(LDcorrect){df <- LDCorrect(df, ld.path = ld.path)}
@@ -79,18 +76,5 @@ ConvertToPolar <- function(dfnames, snpid, whiten = F, covsnps = c(), mahalanobi
   df %>%
     select(starts_with(c(snpid, "chr", "bp", "pos", "beta", "se", "pval", "a1", "a2"))) %>%
     dplyr::inner_join(res, by = snpid) -> res
-  # res <- res %>%
-  #   dplyr::mutate(snpid = df$snpid) %>%
-  #   dplyr::mutate(angle = angle)  %>%
-  #   #dplyr::mutate(angle.trans = (angle*4)%%(2*pi)) %>%
-  #   dplyr::mutate(pval.1 = df$pval.1) %>%
-  #   dplyr::mutate(pval.2 = df$pval.2) %>%
-  #   dplyr::mutate(beta.1 = df$beta.1) %>%
-  #   dplyr::mutate(beta.2 = df$beta.2) %>%
-  #   dplyr::mutate(se.1 = df$se.1) %>%
-  #   dplyr::mutate(se.2 = df$se.2) %>%
-  #   dplyr::mutate(z.whitened.1 = zmat.white[,1]) %>%
-  #   dplyr::mutate(z.whitened.2 = zmat.white[,2])
-  #res$angle.trans[res$angle.trans > pi] <- res$angle.trans[res$angle.trans > pi] - (2*pi)
   return(res)
 }

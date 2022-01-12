@@ -52,7 +52,6 @@ LDCorrect <- function(df, ld.path){
     sign.zvec <- sign(zvec)
     fit <- lm(formula = abs(zvec) ~ df$L2)
     zvec <- (fit$residuals + fit$coefficients[1])
-    #zvec[zvec < 0] <- 0
     df[,zcolnum] <- zvec * sign.zvec
   }
   rm(zvec)
