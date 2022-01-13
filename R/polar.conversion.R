@@ -5,6 +5,7 @@
 #' Works per SNP (row-wise).
 #' @param inputdf vector of effect sizes (z-scores) of 1 SNP on p traits
 #' @returns a list with the distance r, and the angle in radians, normalized to describe a full circle
+#' @export
 PolarCoords <- function(inputdf, debug = F){
   p <- ncol(inputdf)
   if(p < 2){

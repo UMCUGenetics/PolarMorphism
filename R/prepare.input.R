@@ -59,19 +59,6 @@ LDCorrect <- function(df, ld.path){
   return(df)
 }
 
-#' Import SNPs
-#'
-#' Imports a tibble with SNP meta information, and subsets to single nucleotide variants.
-#' @param file A path for the SNP-file.
-#' @param a1,a2 The name of the column for the reference and alternative alleles.
-ImportSNPs <- function(file = "~/3.Athero-integration/mtag/mafgt0.1.infogt0.95.ngt10000.freqSElt0.05.snps", a1 = "a1", a2 = "a2"){
-  snps <- readr::read_table2(file, col_names = T)
-  bases <- c("A", "C", "G", "T")
-  snps <- snps %>%
-    dplyr::filter((dplyr::pull(snps, var = a1) %in% bases) & (dplyr::pull(snps, var = a2) %in% bases))
-}
-
-
 
 
 
