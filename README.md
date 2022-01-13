@@ -8,7 +8,9 @@ Necessary input:
 
 # Installation
 ```{r}
-install.packages("devtools")
+if(!require("devtools")){
+  install.packages("devtools")
+}
 library(devtools)
 install_github("UMCUgenetics/PolarMorphism")
 library(PolarMorphism)
