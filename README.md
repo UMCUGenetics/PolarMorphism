@@ -6,7 +6,13 @@ PolarMorphism uses genome-wide summary statistics from GWAS of multiple related 
 Necessary input:
 - Genome-wide summary statistics from two or more GWAS. Even if you only want to know the sharedness of a few SNPs you need to supply genome-wide summary statistics because PolarMorhpism needs to calculate the covariance matrix from SNPs across the whole genome.
 
-
+# Installation
+```{r}
+install.packages("devtools")
+library(devtools)
+install_github("UMCUgenetics/PolarMorphism")
+library(PolarMorphism)
+```
 
 # Glossary
 GWAS
