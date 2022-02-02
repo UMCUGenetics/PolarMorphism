@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+if(!require("devtools")){
+  install.packages("devtools")
+}
+library(devtools)
+if(!require("PolarMorphism")){
+  install_github("UMCUgenetics/PolarMorphism")
+}
+library(PolarMorphism)
+```
+```{r}
+# These libraries are not necessary for PolarMorphism, but for reading in the data and making plots as I made them here. You can of course use your own preferred methods.
+library(readr)
+library(tidyverse)
+library(qvalue)
+```
+
+```{r}
+wdir <- "~/GWAS.sumstats/"
+traits <- c("AF", "CES")
+
+for(trait in traits){
+  print(trait)
+  print(paste0(wdir, trait, ".cojo.gz"))
+  tbl <- read_table2(paste0(wdir, trait, ".cojo.gz"), col_names = T, n_max = 10000)
+  # the column names are "SNP"  "A1"   "A2"   "freq" "b"    "se"   "p"    "n"
+  # we have to change them so PolarMorphism knows what each column contains
+  colnames(tbl) <- c("snpid","a1","a2","freq","beta","se","pval", "n") # note that PolarMorphism does not need or use the "n" column
+  assign(trait, tbl)
+}
+rm(tbl)
+# Do QC on your summary statistics: make QQ plots, or decide to filter on minor allele frequency or imputation quality based on other criteria
+#
+# QC not shown here #
+#
+
+# We need to choose one of the GWAS as reference, to make sure all GWAS's have the same reference and alternative allele for each SNP
+# We will make CES the reference, and 'flip' the alleles of AF so they align with imt
+# snps 
+AF <- AlleleFlip(sumstats = AF, snps = CES %>% select(snpid, a1, a2), snpid = "snpid", only.a2 = F)
+# because the function Alleleflip not only flips the alleles, but also adds a z-score column, we have to manually do that for imt
+CES$z <- CES$beta/CES$se
+
+CES.AF <- ConvertToPolar(dfnames = traits, snpid = "snpid", whiten = T, LDcorrect = F)
+  
+  #df1 = imt, df2 = AF, snpid = "snpid", trait.names = c("imt","IS"), whiten = T, ld.correct = T, covsnps = intersect(imt$snpid, IS$snpid))
+
+lim <-15
+CES.AF %>%
+  filter(r > 4) %>%
+  ggplot(aes(x = z.whitened.1, y = z.whitened.2)) +
+  theme(aspect.ratio = 1) +
+  xlim(c(-lim,lim)) +
+  ylim(c(-lim,lim)) +
+  geom_point()
+```
+```{r}
+# p-value & q-value for r
+CES.AF$r.pval <- PvalueForR(r = CES.AF$r, p = 2)
+CES.AF$r.qval <- qvalue(p = CES.AF$r.pval)$qvalues
+
+# filter on r, for p-value & q-value for theta
+PolarMorphies <- CES.AF[CES.AF$r.qval < 0.05,]
+PolarMorphies$theta.pval <- PvalueForAngle(angle.trans = PolarMorphies$angle, r = PolarMorphies$r)
+PolarMorphies$theta.qval <- qvalue(p = PolarMorphies$theta.pval)$qvalues
+# filter on theta
+PolarMorphies %>%
+  ggplot(aes(x = abs(angle), y = r, color = theta.qval < 0.05)) +
+  geom_point()
+PolarMorphies %>%
+  ggplot(aes(x = abs(z.whitened.1), y = abs(z.whitened.2), color = theta.qval < 0.05)) +
+  theme(aspect.ratio = 1) +
+  xlim(0,lim) +
+  ylim(0,lim) +
+  geom_point()
+```
+
+
+
