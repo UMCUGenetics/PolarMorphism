@@ -46,8 +46,6 @@ AF <- AlleleFlip(sumstats = AF, snps = CES %>% select(snpid, a1, a2), snpid = "s
 CES$z <- CES$beta/CES$se
 
 CES.AF <- ConvertToPolar(dfnames = traits, snpid = "snpid", whiten = T, LDcorrect = F)
-  
-  #df1 = imt, df2 = AF, snpid = "snpid", trait.names = c("imt","IS"), whiten = T, ld.correct = T, covsnps = intersect(imt$snpid, IS$snpid))
 
 lim <-15
 CES.AF %>%
