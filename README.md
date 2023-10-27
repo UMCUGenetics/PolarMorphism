@@ -1,7 +1,7 @@
 # PolarMorphism
 ## Discovery of genetic variants with shared effect across multiple phenotypes from GWAS summary statistics
 
-Preprint manuscript describing this package: https://www.biorxiv.org/content/10.1101/2022.01.14.476302v1
+Published paper describing this package: http://dx.doi.org/10.1093/bioinformatics/btac228
 
 PolarMorphism uses genome-wide summary statistics from GWAS of multiple related phenotypes to output statistics per SNP that describe its degree of 'sharedness' across the phenotypes of interest and its overall (multivariate) effect size, as well as p-values indicating significance for each statistic. The method is based on a transform from Cartesian to polar coordinates; the 'sharedness' is indicated by the angle with the Cartesian x-axis *theta* and the overall effect size is indicated by the distance from the origin *r*.
 
